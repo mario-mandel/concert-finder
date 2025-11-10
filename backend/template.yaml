@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Concert Finder Backend - Serverless API
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs18.x
+    MemorySize: 512
+    Environment:
+      Variables:
+        TICKETMASTER_API_KEY: !Ref TicketmasterApiKey
+        NODE_ENV: !Ref Environment
+    Architectures:
+      - arm64
+
+Parameters:
+  TicketmasterApiKey:
+    Type: String
+    Description: Ticketmaster API Key (Consumer Key)
+    NoEcho: true
+
+  Environment:
+    Type: String
+    Description: Environment name
+    Default: development
+    AllowedValues:
+      - development
+      - staging
+      - production
+
+Resources:
+  # API Gateway
+  ConcertFinderApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: concert-finder-api
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: NONE
+
+  # Artist Search Function
+  ArtistSearchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub concert-finder-artist-search-${Environment}
+      CodeUri: functions/artists/
+      Handler: search.handler
+      Description: Search for artists via Ticketmaster API
+      Events:
+        SearchArtists:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ConcertFinderApi
+            Path: /api/v1/artists/search
+            Method: GET
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${ConcertFinderApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/
+
+  ArtistSearchFunctionArn:
+    Description: Artist Search Lambda Function ARN
+    Value: !GetAtt ArtistSearchFunction.Arn

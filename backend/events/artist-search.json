@@ -1,0 +1,12 @@
+{
+  "httpMethod": "GET",
+  "path": "/api/v1/artists/search",
+  "queryStringParameters": {
+    "q": "lumineers"
+  },
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": null,
+  "isBase64Encoded": false
+}
