@@ -81,10 +81,10 @@ We use prefixes in our keys to differentiate entity types:
 ```
 PK (Partition Key)        SK (Sort Key)           Entity Type
 USER#123                 PROFILE                  User profile
-USER#123                 ARTIST#spotify:abc       User's followed artist
+USER#123                 ARTIST#tm:K8vZ917Gku7    User's tracked artist
 USER#123                 NOTIF#2025-01-15#001     User's notification
 CONCERT#abc123           METADATA                 Concert details
-ARTIST#spotify:abc       CONCERT#2025-07-15       Artist's upcoming concert
+ARTIST#tm:K8vZ917Gku7    CONCERT#2025-07-15       Artist's upcoming concert
 ```
 
 ---
@@ -178,22 +178,15 @@ Tags:
   "email": "user@example.com",
   "createdAt": "2025-01-15T10:30:00Z",
   "updatedAt": "2025-01-15T10:30:00Z",
-  "musicServices": {
-    "spotify": {
-      "connected": true,
-      "connectedAt": "2025-01-15T11:00:00Z",
-      "displayName": "John Doe",
-      "lastRefreshed": "2025-11-09T08:00:00Z"
-    },
-    "appleMusic": {
-      "connected": false
-    }
-  },
   "statistics": {
-    "totalArtistsFollowed": 47,
+    "totalArtistsTracked": 47,
     "upcomingConcerts": 12,
-    "concertsAttended": 3,
+    "concertsAttended": 0,
     "notificationsSent": 25
+  },
+  "settings": {
+    "theme": "light",
+    "emailVerified": true
   }
 }
 ```
@@ -254,45 +247,24 @@ Tags:
 ```json
 {
   "PK": "USER#123e4567-e89b-12d3-a456-426614174000",
-  "SK": "ARTIST#spotify:artist:abc123",
-  "GSI1PK": "ARTIST#spotify:artist:abc123",
+  "SK": "ARTIST#tm:K8vZ917Gku7",
+  "GSI1PK": "ARTIST#tm:K8vZ917Gku7",
   "GSI1SK": "USER#123e4567-e89b-12d3-a456-426614174000",
   "EntityType": "UserArtist",
   "userId": "123e4567-e89b-12d3-a456-426614174000",
-  "artistId": "spotify:artist:abc123",
+  "artistId": "tm:K8vZ917Gku7",
   "artistName": "The Lumineers",
-  "source": "spotify",
+  "artistImageUrl": "https://s1.ticketm.net/dam/a/abc/123.jpg",
+  "genres": ["Folk", "Indie"],
   "addedAt": "2025-01-15T11:00:00Z",
-  "notificationsEnabled": true,
-  "importedFrom": "followed_artists"
+  "addedBy": "manual",
+  "notificationsEnabled": true
 }
 ```
 
-### 4. Music Service Tokens (Encrypted)
+**Note**: Artists are added manually by users via search (Ticketmaster API). The `addedBy` field is "manual" for MVP. Future versions may support "spotify_import" or "applemusic_import".
 
-**PK**: `USER#{userId}`
-**SK**: `TOKENS#SPOTIFY`
-
-```json
-{
-  "PK": "USER#123e4567-e89b-12d3-a456-426614174000",
-  "SK": "TOKENS#SPOTIFY",
-  "EntityType": "MusicServiceTokens",
-  "userId": "123e4567-e89b-12d3-a456-426614174000",
-  "service": "spotify",
-  "accessToken": "ENCRYPTED_ACCESS_TOKEN",
-  "refreshToken": "ENCRYPTED_REFRESH_TOKEN",
-  "expiresAt": "2025-11-09T14:00:00Z",
-  "scope": "user-follow-read user-top-read",
-  "createdAt": "2025-01-15T11:00:00Z",
-  "updatedAt": "2025-11-09T13:00:00Z",
-  "TTL": 1731164400
-}
-```
-
-**Note**: Tokens are encrypted using AWS KMS before storage. The `TTL` attribute automatically deletes expired tokens.
-
-### 5. Concert
+### 4. Concert
 
 **PK**: `CONCERT#{concertId}`
 **SK**: `METADATA`
@@ -305,16 +277,16 @@ Tags:
 {
   "PK": "CONCERT#abc123",
   "SK": "METADATA",
-  "GSI1PK": "ARTIST#spotify:artist:abc123",
+  "GSI1PK": "ARTIST#tm:K8vZ917Gku7",
   "GSI1SK": "CONCERT#2025-07-15",
   "GSI2PK": "CITY#Denver",
   "GSI2SK": "DATE#2025-07-15",
   "EntityType": "Concert",
   "concertId": "abc123",
   "artist": {
-    "id": "spotify:artist:abc123",
+    "id": "tm:K8vZ917Gku7",
     "name": "The Lumineers",
-    "imageUrl": "https://i.scdn.co/image/abc123"
+    "imageUrl": "https://s1.ticketm.net/dam/a/abc/123.jpg"
   },
   "event": {
     "name": "The Lumineers - Summer Tour",
@@ -361,38 +333,38 @@ Tags:
 }
 ```
 
-### 6. Artist Metadata
+### 5. Artist Metadata
 
 **PK**: `ARTIST#{artistId}`
 **SK**: `METADATA`
 
 ```json
 {
-  "PK": "ARTIST#spotify:artist:abc123",
+  "PK": "ARTIST#tm:K8vZ917Gku7",
   "SK": "METADATA",
   "EntityType": "Artist",
-  "artistId": "spotify:artist:abc123",
+  "artistId": "tm:K8vZ917Gku7",
   "name": "The Lumineers",
-  "imageUrl": "https://i.scdn.co/image/abc123",
-  "genres": ["folk", "indie", "americana"],
-  "spotifyUrl": "https://open.spotify.com/artist/abc123",
+  "imageUrl": "https://s1.ticketm.net/dam/a/abc/123.jpg",
+  "genres": ["Folk", "Indie", "Americana"],
+  "ticketmasterUrl": "https://www.ticketmaster.com/the-lumineers-tickets/artist/K8vZ917Gku7",
   "bio": "The Lumineers are an American folk rock band...",
-  "popularity": 85,
-  "followers": 5234567,
   "statistics": {
-    "totalFollowers": 234,
+    "totalTrackers": 234,
     "upcomingConcerts": 12,
     "lastConcertDate": "2025-07-15"
   },
   "metadata": {
     "firstSeen": "2025-01-15T11:00:00Z",
     "lastUpdated": "2025-02-01T10:00:00Z",
-    "source": "spotify"
+    "source": "ticketmaster"
   }
 }
 ```
 
-### 7. Notification
+**Note**: Artist metadata is cached from Ticketmaster API to reduce API calls. Updated when users add the artist or during scheduled refreshes.
+
+### 6. Notification
 
 **PK**: `USER#{userId}`
 **SK**: `NOTIF#{timestamp}#{notificationId}`
@@ -413,7 +385,7 @@ Tags:
   "message": "The Lumineers will be performing at Red Rocks on July 15, 2025.",
   "data": {
     "concertId": "concert-abc123",
-    "artistId": "spotify:artist:abc123",
+    "artistId": "tm:K8vZ917Gku7",
     "artistName": "The Lumineers",
     "venue": "Red Rocks Amphitheatre",
     "date": "2025-07-15"
@@ -499,7 +471,7 @@ response = table.query(
     IndexName='GSI1',
     KeyConditionExpression='GSI1PK = :artistId AND begins_with(GSI1SK, :prefix)',
     ExpressionAttributeValues={
-        ':artistId': 'ARTIST#spotify:artist:abc123',
+        ':artistId': 'ARTIST#tm:K8vZ917Gku7',
         ':prefix': 'CONCERT#'
     }
 )
@@ -542,13 +514,12 @@ Here's what the table looks like with sample data:
 |----|----|--------|--------|------------|-----------------|
 | USER#user-123 | PROFILE | - | - | UserProfile | email, createdAt, ... |
 | USER#user-123 | PREFERENCES | - | - | UserPreferences | notifications, location, ... |
-| USER#user-123 | ARTIST#spotify:abc | ARTIST#spotify:abc | USER#user-123 | UserArtist | artistName, addedAt, ... |
-| USER#user-123 | ARTIST#spotify:def | ARTIST#spotify:def | USER#user-123 | UserArtist | artistName, addedAt, ... |
+| USER#user-123 | ARTIST#tm:K8vZ917 | ARTIST#tm:K8vZ917 | USER#user-123 | UserArtist | artistName, addedAt, ... |
+| USER#user-123 | ARTIST#tm:abc123 | ARTIST#tm:abc123 | USER#user-123 | UserArtist | artistName, addedAt, ... |
 | USER#user-123 | NOTIF#2025-02-01#n1 | NOTIF#n1 | METADATA | Notification | title, message, read, ... |
-| USER#user-123 | TOKENS#SPOTIFY | - | - | MusicServiceTokens | accessToken, refreshToken, ... |
-| CONCERT#c1 | METADATA | ARTIST#spotify:abc | CONCERT#2025-07-15 | Concert | artist, venue, tickets, ... |
+| CONCERT#c1 | METADATA | ARTIST#tm:K8vZ917 | CONCERT#2025-07-15 | Concert | artist, venue, tickets, ... |
 | CONCERT#c1 | METADATA | CITY#Denver | DATE#2025-07-15 | Concert | (GSI2PK, GSI2SK) |
-| ARTIST#spotify:abc | METADATA | - | - | Artist | name, genres, followers, ... |
+| ARTIST#tm:K8vZ917 | METADATA | - | - | Artist | name, genres, ... |
 
 ---
 
@@ -636,7 +607,7 @@ concerts = response['Items']
 # This is used for sending notifications
 response = table.query(
     IndexName='GSI1',
-    KeyConditionExpression=Key('GSI1PK').eq('ARTIST#spotify:artist:abc123') &
+    KeyConditionExpression=Key('GSI1PK').eq('ARTIST#tm:K8vZ917Gku7') &
                           Key('GSI1SK').begins_with('USER#')
 )
 users = response['Items']
@@ -685,7 +656,7 @@ dynamodb.transact_write_items(
                 'TableName': 'concert-finder-main',
                 'Item': {
                     'PK': 'USER#123',
-                    'SK': 'ARTIST#spotify:abc',
+                    'SK': 'ARTIST#tm:K8vZ917',
                     # ... artist data
                 }
             }

@@ -18,7 +18,7 @@ This document defines all API endpoints for the Concert Finder application using
 3. [Error Responses](#error-responses)
 4. [Endpoints](#endpoints)
    - [Authentication & Users](#authentication--users)
-   - [Music Service Integration](#music-service-integration)
+   - [Artist Management](#artist-management)
    - [Concerts](#concerts)
    - [Notifications](#notifications)
    - [Recommendations (Phase 3)](#recommendations-phase-3)
@@ -132,7 +132,7 @@ All errors follow this structure:
 | `VALIDATION_ERROR` | Request validation failed |
 | `CONFLICT` | Resource already exists |
 | `RATE_LIMIT_EXCEEDED` | Too many requests |
-| `EXTERNAL_API_ERROR` | Third-party service error (Spotify, Ticketmaster) |
+| `EXTERNAL_API_ERROR` | Third-party service error (Ticketmaster) |
 | `INTERNAL_ERROR` | Unexpected server error |
 
 ### Example Error Responses
@@ -318,97 +318,107 @@ Content-Type: application/json
 
 ---
 
-### Music Service Integration
+### Artist Management
 
-#### POST /integrations/spotify/authorize
+#### GET /artists/search
 
-Initiate Spotify OAuth flow.
+Search for artists by name to add to tracking list.
 
 **Authentication**: Required
 
+**Query Parameters**:
+- `q` (required): Artist name search query (min 2 characters)
+- `limit` (optional): Number of results (default: 10, max: 25)
+
 **Request:**
 ```http
-POST /v1/integrations/spotify/authorize
+GET /v1/artists/search?q=lumineers&limit=10
 Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "redirectUri": "https://concert-finder.com/callback"
-}
 ```
 
 **Response (200 OK):**
 ```json
 {
   "data": {
-    "authorizationUrl": "https://accounts.spotify.com/authorize?client_id=...&redirect_uri=...&scope=user-follow-read+user-top-read&response_type=code&state=abc123"
-  }
-}
-```
-
-**Flow**:
-1. Frontend calls this endpoint
-2. Backend generates authorization URL with state parameter
-3. Frontend redirects user to authorization URL
-4. User authorizes on Spotify
-5. Spotify redirects back to redirectUri with code
-6. Frontend calls `/integrations/spotify/callback` with code
-
-#### POST /integrations/spotify/callback
-
-Complete Spotify OAuth flow and fetch user's artists.
-
-**Authentication**: Required
-
-**Request:**
-```http
-POST /v1/integrations/spotify/callback
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "code": "spotify-authorization-code",
-  "state": "abc123"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "data": {
-    "connected": true,
-    "displayName": "John Doe",
-    "artistsImported": 47,
-    "message": "Successfully connected Spotify and imported 47 artists"
+    "artists": [
+      {
+        "id": "tm:artist:K8vZ917Gku7",
+        "name": "The Lumineers",
+        "imageUrl": "https://s1.ticketm.net/dam/a/abc/123.jpg",
+        "genres": ["Folk", "Indie"],
+        "upcomingConcerts": 45
+      },
+      {
+        "id": "tm:artist:K8vZ917Gku8",
+        "name": "Lumineers Tribute Band",
+        "imageUrl": "https://s1.ticketm.net/dam/a/def/456.jpg",
+        "genres": ["Tribute"],
+        "upcomingConcerts": 3
+      }
+    ]
   }
 }
 ```
 
 **Processing**:
-1. Exchange code for Spotify access/refresh tokens
-2. Store encrypted tokens in DynamoDB
-3. Fetch user's followed artists
-4. Fetch user's top artists
-5. Store artists in UserArtists table
-6. Trigger concert search for new artists
+1. Query Ticketmaster API for artist name matches
+2. Normalize and deduplicate results
+3. Return artist data for user selection
 
-#### DELETE /integrations/spotify
+**Error Responses**:
+- `400`: Query too short or invalid
+- `503`: Ticketmaster API unavailable
 
-Disconnect Spotify integration.
+#### POST /artists
+
+Add artist to user's tracking list.
 
 **Authentication**: Required
 
 **Request:**
 ```http
-DELETE /v1/integrations/spotify
+POST /v1/artists
 Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "artistId": "tm:artist:K8vZ917Gku7",
+  "artistName": "The Lumineers"
+}
 ```
 
-**Response (204 No Content)**
+**Response (201 Created):**
+```json
+{
+  "data": {
+    "artist": {
+      "id": "tm:artist:K8vZ917Gku7",
+      "name": "The Lumineers",
+      "imageUrl": "https://s1.ticketm.net/dam/a/abc/123.jpg",
+      "genres": ["Folk", "Indie"],
+      "addedAt": "2025-11-09T20:30:00Z",
+      "upcomingConcerts": 2
+    },
+    "message": "Artist added successfully"
+  }
+}
+```
 
-#### GET /integrations/spotify/artists
+**Processing**:
+1. Validate artistId exists in Ticketmaster
+2. Check if artist already tracked by user
+3. Store in UserArtists table
+4. Trigger concert search for this artist
+5. Return artist details with Denver concert count
 
-Get user's imported Spotify artists.
+**Error Responses**:
+- `400`: Invalid artistId or missing fields
+- `409`: Artist already tracked by user
+- `404`: Artist not found in Ticketmaster
+
+#### GET /artists
+
+Get user's tracked artists.
 
 **Authentication**: Required
 
@@ -419,7 +429,7 @@ Get user's imported Spotify artists.
 
 **Request:**
 ```http
-GET /v1/integrations/spotify/artists?limit=20&offset=0&sort=concertCount
+GET /v1/artists?limit=20&offset=0&sort=concertCount
 Authorization: Bearer {token}
 ```
 
@@ -429,19 +439,19 @@ Authorization: Bearer {token}
   "data": {
     "artists": [
       {
-        "id": "spotify:artist:abc123",
+        "id": "tm:artist:K8vZ917Gku7",
         "name": "The Lumineers",
-        "imageUrl": "https://i.scdn.co/image/abc123",
-        "genres": ["folk", "indie"],
+        "imageUrl": "https://s1.ticketm.net/dam/a/abc/123.jpg",
+        "genres": ["Folk", "Indie"],
         "addedAt": "2025-01-15T11:00:00Z",
         "upcomingConcerts": 2
       },
       {
-        "id": "spotify:artist:def456",
+        "id": "tm:artist:K8vZ917Gku8",
         "name": "Gregory Alan Isakov",
-        "imageUrl": "https://i.scdn.co/image/def456",
-        "genres": ["folk", "singer-songwriter"],
-        "addedAt": "2025-01-15T11:00:00Z",
+        "imageUrl": "https://s1.ticketm.net/dam/a/def/456.jpg",
+        "genres": ["Folk", "Singer-Songwriter"],
+        "addedAt": "2025-01-16T14:30:00Z",
         "upcomingConcerts": 1
       }
     ],
@@ -455,27 +465,31 @@ Authorization: Bearer {token}
 }
 ```
 
-#### POST /integrations/spotify/refresh
+#### DELETE /artists/{artistId}
 
-Manually trigger refresh of Spotify artists (normally happens automatically daily).
+Remove artist from user's tracking list.
 
 **Authentication**: Required
 
+**Path Parameters**:
+- `artistId`: The artist ID to remove (e.g., `tm:artist:K8vZ917Gku7`)
+
 **Request:**
 ```http
-POST /v1/integrations/spotify/refresh
+DELETE /v1/artists/tm:artist:K8vZ917Gku7
 Authorization: Bearer {token}
 ```
 
-**Response (202 Accepted):**
-```json
-{
-  "data": {
-    "message": "Artist refresh initiated. This may take a few minutes.",
-    "jobId": "job-abc123"
-  }
-}
-```
+**Response (204 No Content)**
+
+**Processing**:
+1. Verify artist belongs to authenticated user
+2. Remove from UserArtists table
+3. Optionally clean up notifications for this artist
+
+**Error Responses**:
+- `404`: Artist not found in user's tracking list
+- `403`: Artist belongs to different user
 
 ---
 

@@ -1,0 +1,23 @@
+{
+  "name": "concert-finder-backend",
+  "version": "0.1.0",
+  "description": "Backend Lambda functions for Concert Finder",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.js\""
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1691.0",
+    "axios": "^1.7.9"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.57.1",
+    "prettier": "^3.4.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

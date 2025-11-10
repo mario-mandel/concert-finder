@@ -30,14 +30,14 @@ This document provides a comprehensive technical specification for the Concert F
 
 ### Purpose
 
-Concert Finder is a serverless web application that helps music enthusiasts stay informed about concerts from their favorite artists in the Denver area. The system integrates with Spotify to understand user music preferences and aggregates concert data from multiple sources.
+Concert Finder is a serverless web application that helps music enthusiasts stay informed about concerts from their favorite artists in the Denver area. Users manually track artists they care about, and the system automatically finds and notifies them about upcoming Denver-area concerts.
 
 ### Key Objectives
 
 1. **Automation**: Eliminate manual checking of concert announcements
-2. **Personalization**: Tailor concert recommendations to individual music taste
+2. **Personalization**: Track concerts for artists you care about
 3. **Timeliness**: Notify users as soon as relevant concerts are announced
-4. **Discovery**: Help users find new artists and concerts they'll enjoy
+4. **Discovery**: Help users find new artists and concerts they'll enjoy (Phase 3)
 5. **Simplicity**: Provide an intuitive, low-friction user experience
 
 ### Target Users
@@ -60,12 +60,12 @@ Concert Finder is a serverless web application that helps music enthusiasts stay
 - FR1.4: Users must be able to log out
 - FR1.5: Sessions must persist across browser refreshes
 
-#### FR2: Spotify Integration
-- FR2.1: Users must authorize the app to access their Spotify data
-- FR2.2: System must fetch user's favorite artists (followed artists)
-- FR2.3: System must fetch user's top artists (based on listening history)
-- FR2.4: System must refresh Spotify data periodically
-- FR2.5: Users must be able to disconnect/reconnect Spotify
+#### FR2: Artist Management
+- FR2.1: Users must be able to manually add artists to their tracking list
+- FR2.2: Users must be able to search for artists by name
+- FR2.3: Users must be able to remove artists from their tracking list
+- FR2.4: Users must be able to view their complete list of tracked artists
+- FR2.5: System must validate artist names against concert data sources
 
 #### FR3: Concert Discovery
 - FR3.1: System must search for concerts by each favorite artist
@@ -92,11 +92,16 @@ Concert Finder is a serverless web application that helps music enthusiasts stay
 - FR6.3: Users can define maximum ticket price alerts
 - FR6.4: Users can specify preferred days of the week
 
-#### FR7: AI Recommendations (Phase 3)
-- FR7.1: System suggests concerts based on music taste
-- FR7.2: System recommends similar artists with upcoming shows
-- FR7.3: System provides explanation for recommendations
-- FR7.4: Users can provide feedback on recommendations
+#### FR7: Music Integration (Future Enhancement)
+- FR7.1: Users can optionally connect Spotify or Apple Music
+- FR7.2: System can import favorite artists from connected service
+- FR7.3: Users can sync artist lists automatically
+
+#### FR8: AI Recommendations (Phase 3)
+- FR8.1: System suggests concerts based on tracked artists and genres
+- FR8.2: System recommends similar artists with upcoming shows
+- FR8.3: System provides explanation for recommendations
+- FR8.4: Users can provide feedback on recommendations
 
 ### Non-Functional Requirements
 
@@ -193,10 +198,6 @@ Concert Finder is a serverless web application that helps music enthusiasts stay
        └──────────────┘
 
        ┌──────────────┐
-       │ Spotify API  │  (Artist data)
-       └──────────────┘
-
-       ┌──────────────┐
        │Ticketmaster  │  (Concert data)
        │     API      │
        └──────────────┘
@@ -261,7 +262,6 @@ Concert Finder is a serverless web application that helps music enthusiasts stay
   - User authentication
   - Password management
   - JWT token issuance
-  - OAuth 2.0 flow for Spotify
 
 #### Notification Layer
 - **Technology**: AWS SNS + SES
@@ -374,14 +374,13 @@ Concert Finder is a serverless web application that helps music enthusiasts stay
 
 ### External APIs
 
-#### Spotify Web API
-**Purpose**: Fetch user's favorite artists and listening data
-**Documentation**: https://developer.spotify.com/documentation/web-api
-**Rate Limits**: Generally permissive, but we'll cache data
-**Required Scopes**:
-- `user-follow-read` - Access followed artists
-- `user-top-read` - Access top artists and tracks
-**Cost**: Free
+#### Music Streaming APIs (Future Enhancement)
+**Purpose**: Optional automatic artist import
+**Options**:
+- Spotify Web API (Free, OAuth 2.0)
+- Apple Music API (Requires $99/year Apple Developer Program)
+**Status**: Not implemented in MVP - users manually add artists instead
+**Cost**: Free (Spotify) or $99/year (Apple Music)
 
 #### Ticketmaster Discovery API
 **Purpose**: Concert and event data
@@ -461,26 +460,28 @@ Concert Finder is a serverless web application that helps music enthusiasts stay
 8. Lambda receives userId in event.requestContext.authorizer.claims
 ```
 
-### Spotify Connection Flow (OAuth 2.0)
+### Artist Management Flow
 
 ```
-1. User clicks "Connect Spotify"
+1. User clicks "Add Artist"
    ↓
-2. Frontend redirects to Spotify authorization URL
+2. User searches for artist name
    ↓
-3. User grants permissions on Spotify
+3. Frontend → GET /api/v1/artists/search?q={artistName}
    ↓
-4. Spotify redirects back with authorization code
+4. Lambda queries Ticketmaster API for artist matches
    ↓
-5. Frontend → API → Lambda exchanges code for tokens
+5. Frontend displays matching artists
    ↓
-6. Lambda stores encrypted tokens in DynamoDB
+6. User selects artist to track
    ↓
-7. Lambda fetches user's artists from Spotify
+7. Frontend → POST /api/v1/artists
    ↓
-8. Lambda stores artists in DynamoDB (UserArtists table)
+8. Lambda stores artist in UserArtists table
    ↓
-9. Lambda triggers concert search for new artists
+9. Lambda triggers concert search for new artist
+   ↓
+10. Frontend updates tracked artists list
 ```
 
 ### Concert Discovery Flow
@@ -584,33 +585,29 @@ We're using **AWS Cognito** with **JWT tokens** for authentication:
    - Frontend stores tokens in `localStorage` (acceptable for MVP)
    - Consider `httpOnly` cookies for production
 
-### Spotify OAuth 2.0 Integration
+### Artist Data Management
 
-Spotify requires OAuth 2.0 authorization:
+For the MVP, artists are managed manually:
 
-1. **Authorization Code Flow**:
-   ```
-   GET https://accounts.spotify.com/authorize?
-       client_id=YOUR_CLIENT_ID&
-       response_type=code&
-       redirect_uri=YOUR_REDIRECT_URI&
-       scope=user-follow-read user-top-read
-   ```
+1. **Artist Search**:
+   - Query Ticketmaster API for artist name matches
+   - Return standardized artist data
+   - Cache results to minimize API calls
 
-2. **Token Exchange**:
-   - Backend Lambda exchanges authorization code for tokens
-   - Receives: access_token, refresh_token, expires_in
-   - Stores encrypted tokens in DynamoDB
+2. **Artist Storage**:
+   - Store in UserArtists DynamoDB table
+   - Include: userId, artistId, artistName, dateAdded
+   - Index by userId for efficient queries
 
-3. **Token Refresh**:
-   - Access tokens expire after 1 hour
-   - Lambda automatically refreshes using refresh_token
-   - Updates DynamoDB with new tokens
+3. **Artist Validation**:
+   - Verify artist exists in Ticketmaster database
+   - Prevent duplicate artists per user
+   - Handle artist name variations
 
-4. **Security**:
-   - Client secret stored in AWS Secrets Manager
-   - Tokens encrypted at rest in DynamoDB
-   - Refresh tokens never exposed to frontend
+4. **Future Enhancement**:
+   - Add OAuth integration for Spotify/Apple Music
+   - Implement bulk artist import
+   - Store encrypted service tokens in DynamoDB
 
 ### API Security
 
@@ -638,69 +635,31 @@ Spotify requires OAuth 2.0 authorization:
    - Never commit secrets to Git
 
 4. **Personal Data**:
-   - Store minimal user data (email, userId)
-   - Spotify tokens encrypted
+   - Store minimal user data (email, userId, tracked artists)
    - No sensitive data logged
+   - User data isolated by userId
 
 ### Compliance Considerations
 
 - **GDPR**: Allow users to export/delete their data
 - **CCPA**: Provide data access and deletion capabilities
-- **Spotify ToS**: Comply with Spotify Developer Terms
 - **Ticketmaster ToS**: Comply with API usage terms
 
 ---
 
 ## External API Integrations
 
-### Spotify Web API
+### Music Streaming APIs (Future Enhancement)
 
-#### Authentication
-- **Type**: OAuth 2.0
-- **Flow**: Authorization Code with PKCE (future enhancement)
-- **Tokens**: Access token (1 hour expiry) + Refresh token
+**Status**: Not implemented in MVP
 
-#### Key Endpoints
+For future versions, we may add optional integration with:
+- **Spotify Web API**: OAuth 2.0, free tier
+- **Apple Music API**: JWT-based auth, requires Apple Developer Program ($99/year)
 
-**Get User's Followed Artists**
-```
-GET https://api.spotify.com/v1/me/following?type=artist&limit=50
-Authorization: Bearer {access_token}
+**Purpose**: Allow users to quickly import their favorite artists instead of manual entry
 
-Response:
-{
-  "artists": {
-    "items": [
-      {
-        "id": "artist_id",
-        "name": "Artist Name",
-        "genres": ["rock", "alternative"],
-        "images": [...]
-      }
-    ],
-    "next": "pagination_url",
-    "total": 120
-  }
-}
-```
-
-**Get User's Top Artists**
-```
-GET https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=50
-Authorization: Bearer {access_token}
-
-Response: Similar to above
-```
-
-#### Rate Limiting
-- Generally permissive (no hard public limit)
-- Implement caching to reduce calls
-- Refresh user data once daily
-
-#### Error Handling
-- 401: Token expired → Refresh token
-- 429: Rate limited → Exponential backoff
-- 500: Spotify down → Retry with backoff
+**MVP Approach**: Users manually add artists via search interface
 
 ### Ticketmaster Discovery API
 
@@ -1017,15 +976,14 @@ Target: CleanupLambda
 - ✅ All specification documents
 - ✅ Project structure created
 - [ ] AWS account configured
-- [ ] Spotify Developer app registered
 - [ ] Ticketmaster API key obtained
 - [ ] Development environment set up (Node.js, AWS CLI, etc.)
 - [ ] GitHub repository created and configured
 
 **Success Criteria**:
-- All team members can run a "Hello World" Lambda locally
+- Can run a "Hello World" Lambda locally
 - Can deploy a simple CloudFormation stack
-- Can authenticate with Spotify API
+- Can query Ticketmaster API successfully
 
 ---
 
@@ -1040,11 +998,12 @@ Target: CleanupLambda
 - [ ] Implement authentication flow
 - [ ] Set up API Gateway with Cognito authorizer
 
-**Week 4: Spotify Integration**
-- [ ] Implement OAuth 2.0 flow for Spotify
-- [ ] Build Lambda to fetch and store user's artists
-- [ ] Create "Connect Spotify" UI
-- [ ] Store encrypted tokens in DynamoDB
+**Week 4: Artist Management**
+- [ ] Build artist search endpoint (Ticketmaster API)
+- [ ] Create "Add Artist" UI with search
+- [ ] Build Lambda to add/remove artists
+- [ ] Create tracked artists list view
+- [ ] Implement artist validation
 
 **Week 5: Concert Discovery**
 - [ ] Build Ticketmaster integration Lambda
@@ -1062,9 +1021,9 @@ Target: CleanupLambda
 
 **Success Criteria**:
 - Users can sign up and log in
-- Users can connect Spotify and see their favorite artists
-- Users can see upcoming Denver concerts for their artists
-- Users receive email when favorite artists announce shows
+- Users can manually add and remove favorite artists
+- Users can see upcoming Denver concerts for their tracked artists
+- Users receive email when tracked artists announce shows
 
 ---
 

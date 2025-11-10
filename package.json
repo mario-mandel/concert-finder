@@ -1,0 +1,38 @@
+{
+  "name": "concert-finder",
+  "version": "0.1.0",
+  "description": "A personalized concert discovery app for Denver area shows",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && sam local start-api",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && sam build",
+    "deploy": "cd backend && sam build && sam deploy",
+    "test": "npm run test --workspaces",
+    "clean": "rm -rf node_modules frontend/node_modules backend/node_modules .aws-sam"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YOUR_USERNAME/concert-finder.git"
+  },
+  "keywords": [
+    "concerts",
+    "music",
+    "denver",
+    "ticketmaster",
+    "serverless",
+    "aws"
+  ],
+  "author": "Mario Mandel",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

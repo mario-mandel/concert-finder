@@ -15,7 +15,7 @@
 
 ## Overview
 
-Concert Finder solves a common problem for music lovers: staying up-to-date with concert announcements from your favorite artists. Instead of manually checking tour dates or missing shows, this app automatically tracks your favorite artists from Spotify and alerts you when they're playing in Denver.
+Concert Finder solves a common problem for music lovers: staying up-to-date with concert announcements from your favorite artists. Instead of manually checking tour dates or missing shows, this app lets you track your favorite artists and automatically alerts you when they're playing in Denver.
 
 ### The Problem
 - Artists announce tours across multiple platforms
@@ -24,18 +24,18 @@ Concert Finder solves a common problem for music lovers: staying up-to-date with
 - No centralized way to track all your favorite artists' tour schedules
 
 ### The Solution
-Concert Finder integrates with your Spotify account to:
-1. **Track Favorites**: Automatically monitor all your favorited artists
-2. **Find Local Shows**: Search for upcoming concerts in the Denver area
-3. **Smart Notifications**: Get alerts when your artists announce Denver shows
-4. **AI Recommendations**: Discover new artists and concerts based on your music taste
+Concert Finder makes concert tracking simple:
+1. **Track Artists**: Manually add your favorite artists to track
+2. **Find Local Shows**: Automatically search for upcoming concerts in the Denver area
+3. **Smart Notifications**: Get email alerts when your artists announce Denver shows
+4. **AI Recommendations** (Phase 3): Discover new artists and concerts based on your tracked artists
 
 ## Features
 
 ### Phase 1: MVP (Minimum Viable Product)
 - ✅ User authentication and authorization
-- ✅ Spotify integration to fetch favorite artists
-- ✅ Concert data aggregation from multiple sources (Ticketmaster, Songkick)
+- ✅ Manual artist tracking (search and add artists)
+- ✅ Concert data aggregation from Ticketmaster API
 - ✅ Denver-area venue filtering
 - ✅ Simple web dashboard showing upcoming concerts
 - ✅ Basic email notifications for new concert announcements
@@ -45,6 +45,7 @@ Concert Finder integrates with your Spotify account to:
 - 🔄 Concert calendar export (iCal format)
 - 🔄 Ticket purchase links and pricing information
 - 🔄 User preferences (notification settings, venue preferences)
+- 🔄 Optional Spotify/Apple Music integration for bulk artist import
 
 ### Phase 3: AI-Powered Discovery
 - 🔮 AI-powered concert recommendations using AWS Bedrock
@@ -74,9 +75,9 @@ Concert Finder integrates with your Spotify account to:
 - **AWS Cognito** - User authentication and authorization
 
 ### Integrations
-- **Spotify Web API** - Access user's favorite artists and listening history
 - **Ticketmaster Discovery API** - Concert and event data
-- **Songkick API** (alternative) - Additional concert data source
+- **Songkick API** (alternative/future) - Additional concert data source
+- **Spotify/Apple Music APIs** (Phase 2) - Optional bulk artist import
 
 ### Notifications
 - **AWS SNS** - SMS notifications
@@ -101,10 +102,13 @@ We're taking a **spec-driven development** approach, which means we're thoroughl
 ### What's Been Completed
 - [x] Project initialization
 - [x] README documentation
-- [ ] Technical specifications
-- [ ] API design documentation
-- [ ] Data models and database schema
-- [ ] Setup and deployment guides
+- [x] Technical specifications
+- [x] API design documentation
+- [x] Data models and database schema
+- [x] Setup and deployment guides
+- [ ] AWS account setup
+- [ ] Ticketmaster API key obtained
+- [ ] Development environment configured
 
 ## Documentation
 
@@ -125,7 +129,7 @@ This project includes comprehensive documentation to help you understand every a
 Before you begin, you'll need:
 - **Node.js** (v18 or later) - [Download here](https://nodejs.org/)
 - **AWS Account** - [Sign up for free tier](https://aws.amazon.com/free/)
-- **Spotify Account** - For API access and testing
+- **Ticketmaster API Key** - [Register here](https://developer.ticketmaster.com/)
 - **Git** - Version control
 - **AWS CLI** - [Installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 
@@ -199,16 +203,16 @@ concert-finder/
 ## Development Roadmap
 
 ### Phase 1: Foundation (Weeks 1-2)
-- [ ] Complete all specification documents
+- [x] Complete all specification documents
 - [ ] Set up AWS account and configure services
-- [ ] Register Spotify Developer application
+- [ ] Obtain Ticketmaster API key
 - [ ] Set up development environment
 - [ ] Create project boilerplate
 
 ### Phase 2: MVP Development (Weeks 3-6)
 - [ ] Implement user authentication (Cognito)
-- [ ] Build Spotify integration
-- [ ] Integrate concert data APIs
+- [ ] Build artist search and management UI
+- [ ] Integrate Ticketmaster concert data API
 - [ ] Create basic UI for concert browsing
 - [ ] Implement email notifications
 - [ ] Deploy to AWS
@@ -240,7 +244,7 @@ New to these technologies? Here are some helpful resources:
 - **React**: [Official Tutorial](https://react.dev/learn)
 - **AWS Lambda**: [Getting Started Guide](https://docs.aws.amazon.com/lambda/latest/dg/getting-started.html)
 - **DynamoDB**: [Developer Guide](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/)
-- **Spotify API**: [Web API Documentation](https://developer.spotify.com/documentation/web-api)
+- **Ticketmaster API**: [Discovery API Documentation](https://developer.ticketmaster.com/products-and-docs/apis/discovery-api/v2/)
 - **API Design**: [REST API Best Practices](https://restfulapi.net/)
 
 ## Contributing
@@ -260,4 +264,4 @@ Built with ❤️ for music lovers in Denver
 
 ---
 
-**Note**: This project uses the Spotify Web API and various concert data APIs. Make sure to review their terms of service and rate limits when deploying to production.
+**Note**: This project uses the Ticketmaster Discovery API. Make sure to review their terms of service and rate limits when deploying to production. The free tier includes 5,000 API calls per day.
